@@ -23,14 +23,25 @@ import json
 import time as _time
 from urllib import request as _request
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
+
+DEFAULT_CLOUD_URL = "https://app.lensapp.eu"
 
 _CONFIG = {
     "host": os.environ.get("LENS_HOST", "127.0.0.1"),
     "port": int(os.environ.get("LENS_PORT", "23600")),
     "cloud_url": os.environ.get("LENS_CLOUD_URL"),
     "key": os.environ.get("LENS_PROJECT_KEY"),
+    "local": None,  # send to the desktop app (env LENS_LOCAL, default on)
+    "cloud": None,  # send to Lens Cloud (env LENS_CLOUD, default on)
 }
+
+
+def _env_bool(name, default):
+    v = os.environ.get(name)
+    if v is None or v == "":
+        return default
+    return v.strip().lower() not in ("false", "0", "no", "off")
 
 
 def _resolve_key():
@@ -38,8 +49,16 @@ def _resolve_key():
 
 
 def _resolve_cloud_url():
-    u = _CONFIG.get("cloud_url") or os.environ.get("LENS_CLOUD_URL")
-    return u.rstrip("/") if u else None
+    u = _CONFIG.get("cloud_url") or os.environ.get("LENS_CLOUD_URL") or DEFAULT_CLOUD_URL
+    return u.rstrip("/")
+
+
+def _local_enabled():
+    return _CONFIG["local"] if _CONFIG.get("local") is not None else _env_bool("LENS_LOCAL", True)
+
+
+def _cloud_enabled():
+    return _CONFIG["cloud"] if _CONFIG.get("cloud") is not None else _env_bool("LENS_CLOUD", True)
 
 _THIS_FILE = os.path.abspath(__file__)
 _COLORS = ("red", "green", "blue", "orange", "purple", "gray")
@@ -130,15 +149,15 @@ def _transmit(payload):
 
     _ensure_worker()
 
-    # Local Lens desktop app.
-    local_url = "http://%s:%d" % (_CONFIG["host"], _CONFIG["port"])
-    _queue.put((local_url, body, {"Content-Type": "application/json"}))
+    # Channel 1: local Lens desktop app (env LENS_LOCAL, default on).
+    if _local_enabled():
+        local_url = "http://%s:%d" % (_CONFIG["host"], _CONFIG["port"])
+        _queue.put((local_url, body, {"Content-Type": "application/json"}))
 
-    # Lens Cloud, straight from the client, no desktop required.
-    cloud_url = _resolve_cloud_url()
-    if cloud_url and key and payload_type not in ("clear", "pause"):
+    # Channel 2: Lens Cloud (env LENS_CLOUD, default on; needs a project key).
+    if _cloud_enabled() and key and payload_type not in ("clear", "pause"):
         _queue.put((
-            cloud_url + "/api/ingest",
+            _resolve_cloud_url() + "/api/ingest",
             body,
             {"Content-Type": "application/json", "x-lens-key": key},
         ))
@@ -227,7 +246,7 @@ def _exception(exc):
     })
 
 
-def _configure(host=None, port=None, cloud_url=None, key=None):
+def _configure(host=None, port=None, cloud_url=None, key=None, local=None, cloud=None):
     if host is not None:
         _CONFIG["host"] = host
     if port is not None:
@@ -236,6 +255,10 @@ def _configure(host=None, port=None, cloud_url=None, key=None):
         _CONFIG["cloud_url"] = cloud_url.rstrip("/") if cloud_url else None
     if key is not None:
         _CONFIG["key"] = key or None
+    if local is not None:
+        _CONFIG["local"] = bool(local)
+    if cloud is not None:
+        _CONFIG["cloud"] = bool(cloud)
 
 
 lens.clear = _clear

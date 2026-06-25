@@ -23,21 +23,31 @@ Colours: `red`, `green`, `blue`, `orange`, `purple`, `gray`.
 
 ## Lens Cloud (optional)
 
-To send events straight to [Lens Cloud](https://app.lensapp.eu), no desktop app required, set both
-in your environment:
+To send events straight to [Lens Cloud](https://app.lensapp.eu), no desktop app required, set one
+environment variable:
 
 ```bash
 LENS_PROJECT_KEY=your-project-key-from-lens-cloud
-LENS_CLOUD_URL=https://app.lensapp.eu
 ```
 
-The project key links events to the right project; the cloud URL is where they are sent. With both
-set, every event goes to Lens Cloud (and to the desktop app too, if it is running). You can also
-configure it in code:
+With a key set, events go to Lens Cloud at `https://app.lensapp.eu` by default. Set `LENS_CLOUD_URL`
+only to point at a self-hosted or local cloud (e.g. `http://localhost:3000`). You can also configure
+it in code:
 
 ```python
-lens.configure(cloud_url="https://app.lensapp.eu", key="your-project-key")
+lens.configure(key="your-project-key")  # cloud_url defaults to https://app.lensapp.eu
 ```
+
+### Channels
+
+Lens sends to two channels, independently toggleable (default on):
+
+```bash
+LENS_LOCAL=false   # disable the desktop app -> cloud only
+LENS_CLOUD=false   # disable the cloud -> desktop app only
+```
+
+Or in code: `lens.configure(local=False)` / `lens.configure(cloud=False)`.
 
 Each event also carries context (Python version, OS, hostname and detected framework) which shows
 up as tags in Lens Cloud.
