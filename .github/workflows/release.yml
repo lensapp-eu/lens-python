@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Release
 
 # Publishes to PyPI via Trusted Publishing (OIDC) whenever a GitHub Release is
 # published. No PyPI token is stored: PyPI verifies the workflow through OIDC.
